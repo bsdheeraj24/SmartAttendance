@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Face</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-5">
+  <div class="card shadow mx-auto" style="max-width: 520px;">
+    <div class="card-body">
+
+      <h4 class="text-center mb-3">📸 Add Face</h4>
+
+      <form method="POST" enctype="multipart/form-data" id="faceForm">
+
+        <!-- NAME -->
+        <input class="form-control mb-3"
+               name="name"
+               placeholder="Enter Name"
+               required>
+
+        <!-- FILE UPLOAD -->
+        <label class="form-label">Upload Image (optional)</label>
+        <input class="form-control mb-3"
+               type="file"
+               id="fileInput"
+               accept="image/*">
+
+        <hr>
+
+        <!-- CAMERA -->
+        <label class="form-label">Live Camera (Burst Capture)</label>
+        <video id="video" autoplay playsinline
+               class="w-100 border rounded"></video>
+
+        <button type="button"
+                class="btn btn-outline-primary w-100 mt-2"
+                onclick="startBurstCapture()">
+          📷 Capture 10 Images
+        </button>
+
+        <small class="text-muted d-block mt-1">
+          Keep face steady for ~2 seconds
+        </small>
+
+        <!-- THIS IS THE ONLY FILE FIELD SENT TO SERVER -->
+        <input type="file" name="image" id="finalImage" style="display:none;" required>
+
+        <!-- SUBMIT -->
+        <button class="btn btn-success w-100 mt-3">
+          Save Face
+        </button>
+
+      </form>
+
+      <a href="/faces" class="btn btn-link w-100 mt-2">Back</a>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const video = document.getElementById("video");
+const finalImage = document.getElementById("finalImage");
+const fileInput = document.getElementById("fileInput");
+
+// Start camera
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => video.srcObject = stream)
+  .catch(() => console.log("Camera not available"));
+
+// If user uploads file → use it
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length > 0) {
+    finalImage.files = fileInput.files;
+  }
+});
+
+// Sharpness metric
+function sharpness(canvas) {
+  const ctx = canvas.getContext("2d");
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let sum = 0;
+  for (let i = 0; i < imgData.length; i += 4) {
+    const gray = (imgData[i] + imgData[i+1] + imgData[i+2]) / 3;
+    sum += gray * gray;
+  }
+  return sum;
+}
+
+// Burst capture (10 images)
+function startBurstCapture() {
+  const captures = [];
+  let count = 0;
+
+  const interval = setInterval(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+
+    captures.push({ canvas, score: sharpness(canvas) });
+    count++;
+
+    if (count >= 10) {
+      clearInterval(interval);
+
+      // Pick sharpest frame
+      captures.sort((a, b) => b.score - a.score);
+      const best = captures[0].canvas;
+
+      best.toBlob(blob => {
+        const file = new File([blob], "best_capture.jpg", {
+          type: "image/jpeg"
+        });
+
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        finalImage.files = dt.files;
+
+        // Clear file upload if camera used
+        fileInput.value = "";
+        alert("10 images captured. Best image selected!");
+      }, "image/jpeg");
+    }
+  }, 200);
+}
+</script>
+
+</body>
+</html>

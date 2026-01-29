@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>{{ name }} Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #eef3ff, #f9fbff);
+      min-height: 100vh;
+    }
+    .card {
+      border-radius: 18px;
+    }
+    .badge {
+      font-size: 0.85rem;
+      padding: 6px 10px;
+    }
+    table th, table td {
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-primary px-3 shadow">
+  <span class="navbar-brand fw-bold">👤 {{ name }} Attendance</span>
+  <a href="/attendance" class="btn btn-outline-light btn-sm">⬅ Back</a>
+</nav>
+
+<div class="container mt-4">
+
+  <!-- ACTION BUTTONS -->
+  <div class="card shadow-lg mb-4">
+    <div class="card-body">
+
+      <div class="d-flex flex-wrap gap-2 justify-content-between mb-3">
+        <a href="/export/{{ name }}" class="btn btn-success">
+          ⬇ Export CSV
+        </a>
+
+        <a href="/attendance/delete_person/{{ name }}"
+           onclick="return confirm('Delete ALL attendance data for {{ name }}?')"
+           class="btn btn-danger">
+          🗑 Delete Person Data
+        </a>
+      </div>
+
+      <!-- DELETE BY DATE -->
+      <form method="POST" action="/attendance/delete_by_date" class="row g-2 mb-3">
+        <input type="hidden" name="name" value="{{ name }}">
+
+        <div class="col-md-4">
+          <input type="date" name="from_date" class="form-control" required>
+        </div>
+
+        <div class="col-md-4">
+          <input type="date" name="to_date" class="form-control" required>
+        </div>
+
+        <div class="col-md-4">
+          <button type="submit"
+                  onclick="return confirm('Delete records in selected date range?')"
+                  class="btn btn-warning w-100">
+            🧹 Delete Filtered Data
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ATTENDANCE TABLE -->
+  <div class="card shadow-lg">
+    <div class="card-body table-responsive">
+
+      <table class="table table-bordered table-striped text-center align-middle">
+        <thead class="table-primary">
+          <tr>
+            <th>Date</th>
+            <th>IN</th>
+            <th>OUT</th>
+            <th>Working Hours</th>
+          </tr>
+        </thead>
+
+        <tbody>
+        {% if records %}
+          {% for r in records %}
+          <tr>
+            <td>{{ r.Date | ddmmyyyy }}</td>
+
+            <td>
+              {% if r.In != "--" %}
+                {{ r.In }}
+              {% else %}
+                <span class="text-muted">--</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if r.Out != "--" %}
+                {{ r.Out }}
+              {% else %}
+                <span class="text-muted">--</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if r.Work != "--" %}
+                <span class="badge bg-success">{{ r.Work }}</span>
+              {% elif r.In == "--" and r.Out != "--" %}
+                <span class="badge bg-warning text-dark">Missing IN</span>
+              {% elif r.In != "--" and r.Out == "--" %}
+                <span class="badge bg-warning text-dark">Missing OUT</span>
+              {% else %}
+                <span class="badge bg-secondary">--</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4" class="text-muted py-4">
+              No attendance records available
+            </td>
+          </tr>
+        {% endif %}
+        </tbody>
+
+      </table>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

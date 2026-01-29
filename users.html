@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>User Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #eef2f7, #dbe4f3);
+      min-height: 100vh;
+    }
+    .card {
+      border-radius: 14px;
+    }
+    .form-control {
+      border-radius: 10px;
+    }
+    .btn {
+      border-radius: 10px;
+    }
+    .table thead th {
+      background-color: #f1f4f9;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-dark shadow px-3">
+  <span class="navbar-brand fw-semibold">👥 User Management</span>
+  <a href="/dashboard" class="btn btn-sm btn-outline-light">⬅ Back</a>
+</nav>
+
+<div class="container mt-5">
+
+  <!-- ADD USER CARD -->
+  <div class="card shadow-lg mb-5">
+    <div class="card-header bg-primary text-white fw-semibold">
+      ➕ Create New Login
+    </div>
+
+    <div class="card-body">
+      <form method="POST" class="row g-3 align-items-end">
+
+        <div class="col-md-5">
+          <label class="form-label">Username</label>
+          <input class="form-control" name="username" placeholder="e.g. teacher01" required>
+        </div>
+
+        <div class="col-md-5">
+          <label class="form-label">Password</label>
+          <input class="form-control" name="password" placeholder="Temporary password" required>
+        </div>
+
+        <div class="col-md-2 d-grid">
+          <button class="btn btn-success fw-semibold">
+            Add User
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- USER LIST -->
+  <div class="card shadow-lg">
+    <div class="card-header bg-secondary text-white fw-semibold">
+      📋 Existing Users
+    </div>
+
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td class="fw-semibold">{{ u }}</td>
+
+              <td>
+                {% if users[u].role == "admin" %}
+                  <span class="badge bg-dark px-3 py-2">ADMIN</span>
+                {% else %}
+                  <span class="badge bg-info text-dark px-3 py-2">USER</span>
+                {% endif %}
+              </td>
+
+              <td class="text-end">
+                {% if u != session.user %}
+                <a href="/delete_user/{{ u }}"
+                   class="btn btn-sm btn-outline-danger"
+                   onclick="return confirm('Delete user {{ u }}?')">
+                  🗑 Delete
+                </a>
+                {% else %}
+                <span class="text-muted fst-italic">Current account</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
