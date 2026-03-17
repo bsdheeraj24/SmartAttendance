@@ -26,9 +26,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import face_recognition
 import numpy as np
 from PIL import Image
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 # ================= CONFIG =================
 KNOWN_DIR = "known_faces"
@@ -37,6 +34,7 @@ ENROLL_SAMPLES = 10
 MIN_GAP_SECONDS = int(os.environ.get("MIN_GAP_SECONDS", "60"))
 POST_ENROLL_GAP_SECONDS = int(os.environ.get("POST_ENROLL_GAP_SECONDS", "60"))
 MATCH_THRESHOLD = float(os.environ.get("MATCH_THRESHOLD", "0.58"))
+MAX_ENCODINGS_PER_PERSON = int(os.environ.get("MAX_ENCODINGS_PER_PERSON", "25"))
 NO_FACE_GRACE_SECONDS = float(os.environ.get("NO_FACE_GRACE_SECONDS", "2.0"))
 STATUS_HOLD_SECONDS = float(os.environ.get("STATUS_HOLD_SECONDS", "2.5"))
 IST = timezone(timedelta(hours=5, minutes=30), name="IST")
@@ -285,7 +283,7 @@ def _store_face_sample(name, encoding_vec, img_pil, source):
     db.collection(FACE_SAMPLES_COLLECTION).add({
         "name": normalized_name,
         "name_key": _face_name_key(normalized_name),
-        "encoding": np.asarray(encoding_vec, dtype=np.float64).tolist(),
+        "encoding": np.asarray(encoding_vec, dtype=np.float32).tolist(),
         "image_b64": _image_to_base64_jpeg(img_pil),
         "source": source,
         "created_at": firestore.SERVER_TIMESTAMP,
@@ -381,6 +379,7 @@ def _load_known_faces_from_firestore():
 
     encodings = []
     names = []
+    per_person_counts = {}
 
     if db is None:
         known_encodings = encodings
@@ -398,8 +397,13 @@ def _load_known_faces_from_firestore():
         if not isinstance(encoding, list) or len(encoding) == 0:
             continue
 
+        key = _face_name_key(name)
+        current_count = per_person_counts.get(key, 0)
+        if current_count >= MAX_ENCODINGS_PER_PERSON:
+            continue
+
         try:
-            vector = np.asarray(encoding, dtype=np.float64)
+            vector = np.asarray(encoding, dtype=np.float32)
         except (ValueError, TypeError):
             continue
 
@@ -408,6 +412,7 @@ def _load_known_faces_from_firestore():
 
         encodings.append(vector)
         names.append(name)
+        per_person_counts[key] = current_count + 1
 
     known_encodings = encodings
     known_names = names
@@ -1000,6 +1005,7 @@ def capture():
     try:
         img_bytes = base64.b64decode(data["image"])
         img_pil = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        img_pil.thumbnail((640, 480))
     except:
         return jsonify({"status": "BAD_IMAGE"})
 
@@ -1447,6 +1453,10 @@ def export_person(name):
 @app.route("/charts")
 @login_required
 def charts():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     selected_date = (request.args.get("date") or "").strip()
     if not selected_date:
         selected_date = now_ist().strftime("%Y-%m-%d")
