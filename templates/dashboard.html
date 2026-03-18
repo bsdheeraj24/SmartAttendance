@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Smart Attendance Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #eef3ff, #f9fbff);
+      min-height: 100vh;
+    }
+    .card {
+      border-radius: 18px;
+    }
+    .big-text {
+      font-size: 2.2rem;
+      font-weight: 700;
+    }
+    .status-text {
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+    .progress {
+      height: 18px;
+      border-radius: 10px;
+    }
+    .pulse {
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+    .live-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: red;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-primary shadow px-3">
+  <span class="navbar-brand fw-bold">🎓 Smart Attendance System</span>
+  <div>
+    {% if session.role == "admin" %}
+    <a href="/users" class="btn btn-sm btn-outline-light me-2">👥 Users</a>
+    {% endif %}
+    <a href="/logout" class="btn btn-sm btn-outline-light">Logout</a>
+  </div>
+</nav>
+
+<div class="container mt-4">
+
+  <!-- MODE DISPLAY -->
+  <div class="card shadow-lg mb-4">
+    <div class="card-body text-center">
+      <div class="text-muted">Current System Mode (From Display)</div>
+      <div id="modeText" class="big-text text-primary">IDLE</div>
+    </div>
+  </div>
+
+  <!-- ENROLL CARD -->
+  <div class="card shadow-lg mb-4 d-none" id="enrollCard">
+    <div class="card-body text-center position-relative">
+
+      <span class="live-badge">LIVE</span>
+
+      <h5 class="mb-1">🧑 Face Enrollment in Progress</h5>
+      <div id="enrollName" class="fw-bold fs-5 text-primary mb-3">--</div>
+
+      <!-- CAMERA TITLE -->
+      <div class="fw-semibold text-primary mb-2">
+        Live Camera Preview
+      </div>
+
+      <!-- ESP32 LIVE PREVIEW (CENTERED & LARGE) -->
+      <div class="d-flex justify-content-center mb-3">
+        <img id="esp32Stream"
+             class="rounded shadow-lg border border-3 border-primary"
+             style="
+               display:none;
+               width:100%;
+               max-width:720px;
+               aspect-ratio:4/3;
+               object-fit:cover;
+             "
+             alt="ESP32 Live Preview">
+      </div>
+
+      <!-- PROGRESS -->
+      <div class="progress mb-2">
+        <div id="enrollProgress"
+             class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+             style="width:0%">
+          0%
+        </div>
+      </div>
+
+      <div id="enrollCount" class="text-muted pulse">
+        Waiting for capture...
+      </div>
+    </div>
+  </div>
+
+  <!-- ATTEND CARD -->
+  <div class="card shadow-lg mb-4 d-none" id="attendCard">
+    <div class="card-body text-center">
+      <div id="attendName" class="big-text">--</div>
+      <div id="attendStatus" class="status-text text-secondary">WAIT</div>
+      <div id="attendConf" class="text-muted">0%</div>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <div class="card shadow-lg">
+    <div class="card-body">
+      <div class="d-grid gap-3">
+        <a href="/faces" class="btn btn-outline-primary btn-lg">👤 Manage Faces</a>
+        <a href="/attendance" class="btn btn-outline-success btn-lg">📋 Attendance Records</a>
+        <a href="/charts" class="btn btn-outline-warning btn-lg">📊 Reports & Charts</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* 🔴 CHANGE THIS TO YOUR ESP32 IP */
+const ESP32_STREAM_URL = "{{ stream_url }}";
+
+
+let cachedEnrollName = "";
+
+function stopStream() {
+  const img = document.getElementById("esp32Stream");
+  img.src = "";
+  img.style.display = "none";
+}
+
+function updateDashboard() {
+
+  // ===== STATUS =====
+  fetch("/status")
+    .then(r => r.json())
+    .then(s => {
+
+      document.getElementById("modeText").innerText =
+        (s.mode || "idle").toUpperCase();
+
+      // ---------- ENROLL ----------
+      if (s.mode === "enroll") {
+        document.getElementById("enrollCard").classList.remove("d-none");
+        document.getElementById("attendCard").classList.add("d-none");
+
+        if (s.name) cachedEnrollName = s.name;
+        document.getElementById("enrollName").innerText =
+          cachedEnrollName || "Starting...";
+
+        const count = s.enroll_count || 0;
+        const percent = count * 10;
+
+        const bar = document.getElementById("enrollProgress");
+        bar.style.width = percent + "%";
+        bar.innerText = percent + "%";
+
+        document.getElementById("enrollCount").innerText =
+          `Captured ${count} / 10 images`;
+
+        // START STREAM
+        const img = document.getElementById("esp32Stream");
+        if (img.src !== ESP32_STREAM_URL) {
+          img.src = ESP32_STREAM_URL;
+        }
+        img.style.display = "block";
+      }
+
+      // ---------- ATTEND ----------
+      else if (s.mode === "attend") {
+        document.getElementById("enrollCard").classList.add("d-none");
+        document.getElementById("attendCard").classList.remove("d-none");
+        stopStream();
+        cachedEnrollName = "";
+      }
+
+      // ---------- IDLE ----------
+      else {
+        document.getElementById("enrollCard").classList.add("d-none");
+        document.getElementById("attendCard").classList.add("d-none");
+        stopStream();
+        cachedEnrollName = "";
+      }
+    });
+
+  // ===== LAST ATTENDANCE =====
+  fetch("/last_recognition")
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === "ATTENDANCE_MARKED") {
+        document.getElementById("attendName").innerText = d.name;
+        document.getElementById("attendStatus").innerText = d.entry;
+        document.getElementById("attendConf").innerText = d.confidence + "%";
+
+        document.getElementById("attendStatus").className =
+          "status-text " + (d.entry === "IN" ? "text-success" : "text-danger");
+      }
+    });
+}
+
+// Fast refresh (near real-time)
+setInterval(updateDashboard, 300);
+updateDashboard();
+</script>
+
+</body>
+</html>
