@@ -263,6 +263,17 @@ def _replace_name_in_meta_list(doc_id, old_name, new_name):
     meta_ref.set({"names": _dedupe_face_names(updated)}, merge=True)
 
 
+def _remove_name_key_from_meta_list(doc_id, name):
+    target_key = _face_name_key(name)
+    meta_ref = db.collection("metadata").document(doc_id)
+    meta_doc = meta_ref.get()
+    names = meta_doc.to_dict().get("names", []) if meta_doc.exists else []
+
+    kept = [existing for existing in names if _face_name_key(existing) != target_key]
+    if len(kept) != len(names):
+        meta_ref.set({"names": _dedupe_face_names(kept)}, merge=True)
+
+
 def _face_name_doc_id(name):
     return _safe_doc_token(_face_name_key(name))
 
@@ -361,6 +372,11 @@ def _rename_face_everywhere(old_name, new_name):
         if _face_name_key(existing) == old_key:
             known_names[i] = new_normalized
 
+    _replace_name_in_meta_list("enrolled_faces", old_normalized, new_normalized)
+    _replace_name_in_meta_list("attendance_persons", old_normalized, new_normalized)
+    # Defensive cleanup for stale old-name variants that may exist in legacy metadata.
+    _remove_name_key_from_meta_list("enrolled_faces", old_normalized)
+    _remove_name_key_from_meta_list("attendance_persons", old_normalized)
     _replace_name_in_meta_list("enrolled_faces", old_normalized, new_normalized)
     _replace_name_in_meta_list("attendance_persons", old_normalized, new_normalized)
 
@@ -512,23 +528,14 @@ def _get_faces_from_firestore():
     names = set(_dedupe_face_names(_get_faces_meta_names()))
 
     # Canonical source for enrolled faces is face_samples.
-    # Using many legacy collections can re-introduce old names after rename.
+    # Avoid attendance metadata here because stale values can re-introduce
+    # renamed entries and appear as duplicates in Manage Faces.
     try:
         for doc in db.collection(FACE_SAMPLES_COLLECTION).stream():
             payload = doc.to_dict() or {}
             normalized = _normalize_face_name(payload.get("name", ""))
             if _is_plausible_face_name(normalized):
                 names.add(normalized)
-    except Exception:
-        pass
-
-    try:
-        attendance_meta = db.collection("metadata").document("attendance_persons").get()
-        if attendance_meta.exists:
-            for name in attendance_meta.to_dict().get("names", []):
-                normalized = _normalize_face_name(name)
-                if normalized:
-                    names.add(normalized)
     except Exception:
         pass
 
