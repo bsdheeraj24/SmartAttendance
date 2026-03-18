@@ -1,8 +1,5 @@
 Flask==3.0.2
-Flask-SocketIO==5.3.6
-eventlet==0.36.1
+firebase-admin
 numpy
-pandas
 Pillow
-matplotlib
 face_recognition

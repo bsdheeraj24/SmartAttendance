@@ -1453,10 +1453,6 @@ def export_person(name):
 @app.route("/charts")
 @login_required
 def charts():
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
     selected_date = (request.args.get("date") or "").strip()
     if not selected_date:
         selected_date = now_ist().strftime("%Y-%m-%d")
@@ -1482,13 +1478,13 @@ def charts():
     values = list(counts.values())
     pretty_date = datetime.strptime(selected_date, "%Y-%m-%d").strftime("%d-%m-%Y")
 
-    plt.clf()
-    if labels:
-        plt.bar(labels, values)
-    plt.title(f"Daily IN Count ({pretty_date})")
-    plt.savefig("static/chart.png")
-
-    return render_template("charts.html", chart_date=selected_date, chart_pretty_date=pretty_date)
+    return render_template(
+        "charts.html",
+        chart_date=selected_date,
+        chart_pretty_date=pretty_date,
+        chart_labels=labels,
+        chart_values=values,
+    )
 
 # ================= RUN =================
 _start_late_alert_worker()
