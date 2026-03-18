@@ -37,6 +37,48 @@
 
 <div class="container mt-5">
 
+  <!-- CHANGE ADMIN CREDENTIALS -->
+  <div class="card shadow-lg mb-5">
+    <div class="card-header bg-warning text-dark fw-semibold">
+      🔐 Change Admin Username / Password
+    </div>
+
+    <div class="card-body">
+      {% if cred_error %}
+      <div class="alert alert-danger py-2">{{ cred_error }}</div>
+      {% endif %}
+      {% if cred_success %}
+      <div class="alert alert-success py-2">{{ cred_success }}</div>
+      {% endif %}
+
+      <form method="POST" action="/change_credentials" class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Current Password</label>
+          <input type="password" class="form-control" name="current_password" required>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">New Username</label>
+          <input class="form-control" name="new_username" placeholder="Leave blank to keep same">
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">New Password</label>
+          <input type="password" class="form-control" name="new_password" placeholder="Leave blank to keep same">
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Confirm Password</label>
+          <input type="password" class="form-control" name="confirm_password" placeholder="Repeat new password">
+        </div>
+
+        <div class="col-md-1 d-grid">
+          <button class="btn btn-warning fw-semibold">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ADD USER CARD -->
   <div class="card shadow-lg mb-5">
     <div class="card-header bg-primary text-white fw-semibold">

@@ -958,6 +958,12 @@ def change_credentials():
     target_username = new_username if new_username else current_user
     updated_hash    = generate_password_hash(new_password) if new_password else user_data["password_hash"]
 
+    if target_username != current_user:
+        target_doc = db.collection("users").document(target_username).get()
+        if target_doc.exists:
+            users = load_users()
+            return render_template("users.html", users=users, cred_error="Username already exists.")
+
     if new_username and new_username != current_user:
         # Create new doc, delete old one
         db.collection("users").document(new_username).set({
