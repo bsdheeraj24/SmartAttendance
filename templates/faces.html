@@ -27,6 +27,27 @@
       <div class="card shadow-sm">
         <div class="card-body">
           <h6>{{ u }}</h6>
+          <form method="post" action="/rename_face" class="mt-2">
+            <input type="hidden" name="old_name" value="{{ u }}">
+            <div class="input-group input-group-sm mb-2">
+              <input
+                type="text"
+                class="form-control"
+                name="new_name"
+                value="{{ u }}"
+                minlength="2"
+                required
+              >
+              <button
+                class="btn btn-outline-primary"
+                type="submit"
+                onclick="return confirm('Rename {{u}}?')"
+              >
+                Edit
+              </button>
+            </div>
+          </form>
+
           <a href="/delete/{{u}}" class="btn btn-sm btn-danger"
              onclick="return confirm('Delete {{u}}?')">
             Delete
