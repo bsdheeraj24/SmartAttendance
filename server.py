@@ -325,6 +325,14 @@ def _get_face_sample_docs_by_name(name):
         by_id[doc.id] = doc
     for doc in db.collection(FACE_SAMPLES_COLLECTION).where("name", "==", normalized_name).stream():
         by_id[doc.id] = doc
+
+    # Legacy rows may miss name_key or keep slightly different name text.
+    # Scan once and match by normalized key to ensure complete rename.
+    for doc in db.collection(FACE_SAMPLES_COLLECTION).stream():
+        payload = doc.to_dict() or {}
+        payload_name = _normalize_face_name(payload.get("name", ""))
+        if _face_name_key(payload_name) == target_key:
+            by_id[doc.id] = doc
     return list(by_id.values())
 
 
@@ -525,7 +533,7 @@ def _get_faces_from_collection(collection_name):
 
 
 def _get_faces_from_firestore():
-    names = set(_dedupe_face_names(_get_faces_meta_names()))
+    names = set()
 
     # Canonical source for enrolled faces is face_samples.
     # Avoid attendance metadata here because stale values can re-introduce
@@ -538,6 +546,10 @@ def _get_faces_from_firestore():
                 names.add(normalized)
     except Exception:
         pass
+
+    # Fallback for legacy deployments where face_samples may be empty.
+    if not names:
+        names = set(_dedupe_face_names(_get_faces_meta_names()))
 
     return _dedupe_face_names(names)
 
